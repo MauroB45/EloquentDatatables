@@ -10,7 +10,7 @@
     ],
     "minimum-stability": "dev",
     "require": {
-        "php": ">=5.5.0",
-        "Illuminate\\Database": "5.*"
+        "php": ">=5.4.0",
+        "Illuminate/Database": "~5.0"
     }
 }
