@@ -2,6 +2,7 @@
     "name": "mauriciobernal/datatableslaravel",
     "description": "Datatables php class helper for eloquent",
     "license": "MIT",
+    "minimum-stability": "stable",
     "authors": [
         {
             "name": "Mauro",
@@ -9,6 +10,7 @@
         }
     ],
     "require": {
-        "php": ">=5.4.0"
+        "php": ">=5.4.0",
+        "Illuminate/Database": "~5.0"
     }
 }
