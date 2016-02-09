@@ -9,7 +9,6 @@
         }
     ],
     "require": {
-        "php": ">=5.4.0",
-        "Illuminate/Database": "~5.0"
+        "php": ">=5.4.0"
     }
 }
