@@ -295,18 +295,19 @@ class DatatablesService implements DatatablesServiceInterface
     }
 
     /**
-     * @param         $request
-     * @param         $table
-     * @param array   $columns
-     * @param array   $groupBy
+     * @param       $request
+     * @param       $table
+     * @param array $columns
+     * @param array $groupBy
+     * @param null  $filterFunction
      * @return array
      */
-    static function custom($request, $table, $columns, $groupBy = null, $filterFunction)
+    static function custom($request, $table, $columns, $groupBy = null, $filterFunction = null)
     {
         // Build the SQL query string from the request
         $sub = self::select($table, $columns);
         $sub = self::group($sub, $groupBy);
-        $sub = $filterFunction($sub);
+        $sub = $filterFunction !== null ? $filterFunction($sub) : $sub;
 
         // Total data set length
         $recordsTotal = sizeof($sub->get());
