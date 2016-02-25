@@ -1,0 +1,21 @@
+{
+    "name": "maurob/eloquentdatatables",
+    "description": "Datatables php class helper for eloquent",
+    "license": "MIT",
+    "minimum-stability": "stable",
+    "authors": [
+        {
+            "name": "Mauricio Bernal",
+            "email": "Mauro.b45@Gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Maurob\\EloquentDatatables\\": "src"
+        }
+    },
+    "require": {
+        "php": ">=5.4.0",
+        "Illuminate/Database": "~5.0"
+    }
+}
