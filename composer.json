@@ -11,7 +11,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "Maurob\\EloquentDatatables\\": "src"
+            "MauroB\\EloquentDatatables\\": "src"
         }
     },
     "require": {

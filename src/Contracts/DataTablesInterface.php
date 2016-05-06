@@ -9,8 +9,12 @@
 namespace MauroB\EloquentDatatables\Contracts;
 
 
+/**
+ * Interface DataTablesInterface
+ *
+ * @package MauroB\EloquentDatatables\Contracts
+ */
 interface DataTablesInterface
 {
-
 
 }

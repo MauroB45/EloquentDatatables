@@ -3,7 +3,8 @@
 namespace MauroB\EloquentDatatables;
 
 use Illuminate\Support\ServiceProvider;
-use MauroB\EloquentDatatable\Contracts\DatatablesServiceInterface;
+use MauroB\EloquentDatatables\Contracts\DatatablesServiceInterface;
+use MauroB\EloquentDatatables\Models\Request;
 
 class EloquentDatatablesServiceProvider extends ServiceProvider
 {
@@ -32,11 +33,11 @@ class EloquentDatatablesServiceProvider extends ServiceProvider
     public function register()
     {
         $this->app->singleton('datatables', function ($app) {
-            return new Datatables($app->make(Request::class));
+            return new DatatablesService($app->make(Request::class));
         });
 
         $this->app->singleton(DatatablesServiceInterface::class, function ($app) {
-            return new DatatablesService();
+            return new DatatablesService($app->make(Request::class));
         });
     }
 
