@@ -7,17 +7,17 @@ class DataTable
 
     public $draw;
 
-    public $totalRecords;
+    public $recordsTotal;
 
-    public $filteredRecords;
+    public $recordsFiltered;
 
     public $data = [
-        'select' => [],
-        'join'   => [],
-        'where'  => [],
-        'having' => [],
-        'order'  => [],
-        'union'  => [],
+        'select' => [ ],
+        'join'   => [ ],
+        'where'  => [ ],
+        'having' => [ ],
+        'order'  => [ ],
+        'union'  => [ ],
     ];
 
     public $error;

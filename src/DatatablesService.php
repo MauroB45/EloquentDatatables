@@ -139,7 +139,7 @@ class DatatablesService implements DatatablesServiceInterface
     {
         if (isset($request['start']) && $request['length'] != -1) {
             $db = $db->take(intval($request['length']))
-                ->offset(intval($request['start']));
+                ->skip(intval($request['start']));
         }
 
         return $db;
@@ -236,7 +236,7 @@ class DatatablesService implements DatatablesServiceInterface
                     $column        = $columns[$columnIdx];
 
                     if ($requestColumn['searchable'] == 'true') {
-                        $db = $db->orWhere($column['db'], ' LIKE ', "%" . $str . "%");
+                        $db = $db->orWhereRaw($column['db']. ' LIKE ' . "'%" . $str . "%'");
                     }
                 }
 
