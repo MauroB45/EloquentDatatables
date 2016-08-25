@@ -136,6 +136,9 @@ class EloquentManager implements DataTablesInterface
      */
     public function orderRecords()
     {
+        $this->query = \DB::table(\DB::raw("({$this->query->toSql()}) as sub"))
+            ->mergeBindings($this->query);
+
         if ( $this->orderCallback ) {
             call_user_func($this->orderCallback, $this->query);
 
@@ -397,9 +400,9 @@ class EloquentManager implements DataTablesInterface
 
                 // Is there a formatter?
                 if ( isset( $column['formatter'] ) ) {
-                    $row[ $column['name'] ] = $column['formatter']($data[ $i ]->$column['name'], $data[ $i ]);
+                    $row[ ($column['name']) ] = $column['formatter']($data[ $i ]->{$column['name']}, $data[ $i ]);
                 } else {
-                    $row[ $column['name'] ] = $data[ $i ]->$column['name'];
+                    $row[ ($column['name']) ] = $data[ $i ]->{$column['name']};
                 }
 
                 // Is there a cast?
