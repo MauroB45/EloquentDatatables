@@ -1,19 +1,59 @@
-<?php namespace MauricioBernal\DatatablesLaravel;
+<?php
 
-use Illuminate\Support\Facades\DB;
+namespace MauroB\EloquentDatatables;
 
-/*
- * Helper functions for building a DataTables server-side processing SQL query
+use DB;
+use Illuminate\Database\Query\Builder;
+use MauroB\EloquentDatatables\Contracts\DatatablesServiceInterface;
+use MauroB\EloquentDatatables\Models\Request;
+
+/**
+ * Class DatatablesService
+ *  Helper class for jQuery DataTables
  *
+ *
+ * @package MauroB\EloquentDatatables
  */
-
 class DatatablesService implements DatatablesServiceInterface
 {
+    protected $datatable;
+
+    protected $request;
+
+    /**
+     * DatatablesService constructor.
+     *
+     * @param Request $request
+     */
+    public function __construct(Request $request)
+    {
+        $this->request = $request->request->count() ? $request : Request::capture();
+    }
+
+    /**
+     * Return manager instance
+     *
+     * @param $builder
+     *
+     * @return EloquentManager
+     */
+    static function of($builder)
+    {
+        $datatablesService = app('datatables');
+
+        return new EloquentManager($builder, $datatablesService->request);
+    }
+
+
+    /* TEST */
+
+
     /**
      * Create the data output array for the DataTables rows
      *
      * @param  array $columns Column information array
      * @param  array $data    Data from the SQL get
+     *
      * @return array          Formatted data in a row based format
      */
     static function data_output($columns, $data)
@@ -28,9 +68,13 @@ class DatatablesService implements DatatablesServiceInterface
 
                 // Is there a formatter?
                 if (isset($column['formatter'])) {
-                    $row[$column['dt']] = $column['formatter']($data[$i]->$column['dt'], $data[$i]);
+                    $row[($column['dt'])] = $column['formatter']($data[$i]->{$column['dt']}, $data[$i]);
                 } else {
-                    $row[$column['dt']] = $data[$i]->$column['dt'];
+                    $row[($column['dt'])] = $data[$i]->{$column['dt']};
+                }
+
+                if (isset($column['cast'])) {
+                    settype($row[($column['dt'])], $column['cast']);
                 }
             }
 
@@ -46,10 +90,11 @@ class DatatablesService implements DatatablesServiceInterface
      *
      * Obtain an PHP QueryBuilder from a connection details array
      *
-     * @param  Builder $db
-     * @param  Array   $columns                      Columns information [ 'db' = database name ,
+     * @param        $table
+     * @param  array $columns                        Columns information [ 'db' = database name ,
      *                                               'dt' = column name]
-     * @return resource QueryBuilder
+     *
+     * @return Builder QueryBuilder
      */
     static function db($table, $columns)
     {
@@ -61,19 +106,22 @@ class DatatablesService implements DatatablesServiceInterface
     /**
      * Build the select from $columns
      *
-     * @param  Builder $db
-     * @param  Array   $columns
+     * @param Builder $model
+     * @param  array  $columns
+     *
      * @return Builder
      */
-    static function select($db, $columns)
+    static function select($model, $columns)
     {
+        $model = $model instanceof Builder ? $model : $model->getQuery();
+
         foreach ($columns as $column) {
-            $db = $db->addSelect(
+            $model->addSelect(
                 DB::raw($column['db'] . ' as ' . $column['dt'])
             );
         }
 
-        return $db;
+        return $model;
     }
 
     /**
@@ -84,13 +132,14 @@ class DatatablesService implements DatatablesServiceInterface
      * @param  Builder $db      Builder object to be built
      * @param  array   $request Data sent to server by DataTables
      * @param  array   $columns Column information array
-     * @return DB SQL limit clause
+     *
+     * @return Builder SQL limit clause
      */
     static function limit($db, $request, $columns)
     {
         if (isset($request['start']) && $request['length'] != -1) {
             $db = $db->take(intval($request['length']))
-                ->offset(intval($request['start']));
+                ->skip(intval($request['start']));
         }
 
         return $db;
@@ -105,10 +154,14 @@ class DatatablesService implements DatatablesServiceInterface
      * @param  Builder $db      Builder object to be built
      * @param  array   $request Data sent to server by DataTables
      * @param  array   $columns Column information array
-     * @return string  SQL order by clause
+     *
+     * @return Builder  SQL order by clause
      */
     static function order($db, $request, $columns)
     {
+        $db = DB::table(DB::raw("({$db->toSql()}) as sub"))
+            ->mergeBindings($db);
+
         if (isset($request['order']) && count($request['order'])) {
             $orderBy   = array();
             $dtColumns = self::pluck($columns, 'dt');
@@ -139,6 +192,7 @@ class DatatablesService implements DatatablesServiceInterface
      *
      * @param  Builder $db      Builder object to be built
      * @param  array   $groupBy Array with the columns to use in a groupBy
+     *
      * @return Builder $db
      */
     static function group($db, $groupBy)
@@ -160,28 +214,29 @@ class DatatablesService implements DatatablesServiceInterface
      * word by word on any field. It's possible to do here performance on large
      * databases would be very poor
      *
-     * @param  array $request  Data sent to server by DataTables
-     * @param  array $columns  Column information array
-     * @param  array $bindings Array of values for PDO bindings, used in the
-     *                         sql_exec() function
-     * @return string SQL where clause
+     * @param  Builder $db
+     * @param  array   $request  Data sent to server by DataTables
+     * @param  array   $columns  Column information array
+     *                           sql_exec() function
+     *
+     * @return Builder
      */
-    static function filter($db, $request, $columns, &$bindings)
+    static function filter($db, $request, $columns)
     {
         $dtColumns = self::pluck($columns, 'dt');
 
         // General column search
         if (isset($request['search']) && $request['search']['value'] != '') {
-            $str = $request['search']['value'];
-
-            $db = $db->where(function ($db) use ($request, $dtColumns, $columns, $str) {
+            $str = str_replace("'", "''", $request['search']['value']);
+            
+            $db = $db->where(function (Builder $db) use ($request, $dtColumns, $columns, $str) {
                 for ($i = 0, $ien = count($request['columns']); $i < $ien; $i++) {
                     $requestColumn = $request['columns'][$i];
                     $columnIdx     = array_search($requestColumn['data'], $dtColumns);
                     $column        = $columns[$columnIdx];
 
                     if ($requestColumn['searchable'] == 'true') {
-                        $db = $db->orWhereRaw($column['db'] . ' like ' . "'%" . $str . "%'");
+                        $db = $db->orWhereRaw($column['db']. ' LIKE ' . "'%" . $str . "%'");
                     }
                 }
 
@@ -196,10 +251,10 @@ class DatatablesService implements DatatablesServiceInterface
                 $columnIdx     = array_search($requestColumn['data'], $dtColumns);
                 $column        = $columns[$columnIdx];
 
-                $str = $requestColumn['search']['value'];
+                $str = str_replace("'", "''", $requestColumn['search']['value']);
 
                 if ($requestColumn['searchable'] == 'true' && $str != '') {
-                    $db = $db->whereRaw($column['db'] . ' like ' . "'%" . $str . "%'");
+                    $db = $db->whereRaw($column['db'] . ' LIKE ' . "'%" . $str . "%'");
                 }
             }
 
@@ -219,6 +274,7 @@ class DatatablesService implements DatatablesServiceInterface
      * @param  string $table   SQL table to query
      * @param  array  $columns Column information array
      * @param  array  $groupBy GroupBy information
+     *
      * @return array          Server-side processing response array
      */
     static function simple($request, $table, $columns, $groupBy = null)
@@ -228,20 +284,16 @@ class DatatablesService implements DatatablesServiceInterface
         $sub = self::group($sub, $groupBy);
         // Total data set length
         $recordsTotal = sizeof($sub->get());
-        $sub          = self::filter($sub, $request, $columns, $bindings);
+        $sub          = self::filter($sub, $request, $columns);
         // Data set length after filtering
         $recordsFiltered = sizeof($sub->get());
 
-        $db = DB::table(DB::raw("({$sub->toSql()}) as sub"));
-        $db = self::order($db, $request, $columns);
+//        $db = DB::table(DB::raw("({$sub->toSql()}) as sub"));
+        $db = self::order($sub, $request, $columns);
         $db = self::limit($db, $request, $columns);
 
         // Data
         $data = $db->get();
-
-        /*
-         * Output
-         */
 
         return array(
             "draw"            => intval($request['draw']),
@@ -257,10 +309,12 @@ class DatatablesService implements DatatablesServiceInterface
      * filter() among others. The returned array is ready to be encoded as JSON
      * in response to an SSP request.
      *
-     * @param  array  $request  Data sent to server by DataTables
-     * @param  string $table    SQL table to query
-     * @param  array  $columns  Column information array
-     * @param  array  $groupBy  GroupBy information
+     * @param  array    $request Data sent to server by DataTables
+     * @param  string   $table   SQL table to query
+     * @param  array    $columns Column information array
+     * @param  array    $groupBy GroupBy information
+     * @param  callable $filterFunction
+     *
      * @return array          Server-side processing response array
      */
     static function complex($request, $table, $columns, $groupBy = null, $filterFunction)
@@ -268,12 +322,13 @@ class DatatablesService implements DatatablesServiceInterface
         // Build the SQL query string from the request
         $sub = self::db($table, $columns);
         $sub = self::group($sub, $groupBy);
+
         $sub = $filterFunction($sub);
         // Total data set length
-        $recordsTotal = sizeof($sub->get());
-        $sub          = self::filter($sub, $request, $columns, $bindings);
+        $recordsTotal = $sub->count();
+        $sub          = self::filter($sub, $request, $columns);
         // Data set length after filtering
-        $recordsFiltered = sizeof($sub->get());
+        $recordsFiltered = $sub->count();
 
         $db = DB::table(DB::raw("({$sub->toSql()}) as sub"));
         $db = self::order($db, $request, $columns);
@@ -295,36 +350,33 @@ class DatatablesService implements DatatablesServiceInterface
     }
 
     /**
-     * @param       $request
-     * @param       $table
-     * @param array $columns
-     * @param array $groupBy
-     * @param null  $filterFunction
+     * @param          $request
+     * @param          $table
+     * @param array    $columns
+     * @param array    $groupBy
+     * @param callable $filterFunction
+     *
      * @return array
      */
     static function custom($request, $table, $columns, $groupBy = null, $filterFunction = null)
     {
-        // Build the SQL query string from the request
-        $sub = self::select($table, $columns);
-        $sub = self::group($sub, $groupBy);
-        $sub = $filterFunction !== null ? $filterFunction($sub) : $sub;
+        $query = self::select($table, $columns);
 
-        // Total data set length
-        $recordsTotal = sizeof($sub->get());
-        $sub          = self::filter($sub, $request, $columns, $bindings);
-        // Data set length after filtering
-        $recordsFiltered = sizeof($sub->get());
+        if (isset($groupBy)) {
+            $query = self::group($query, $groupBy);
+        }
+        if (isset($filterFunction)) {
+            $query = $filterFunction($query);
+        }
 
-        $db = DB::table(DB::raw("({$sub->toSql()}) as sub"));
-        $db = self::order($db, $request, $columns);
-        $db = self::limit($db, $request, $columns);
+        $recordsTotal    = $query->count();
+        $query           = self::filter($query, $request, $columns);
+        $recordsFiltered = $query->count();
+        $query           = self::order($query, $request, $columns);
+        $query           = self::limit($query, $request, $columns);
 
         // Data
-        $data = $db->get();
-
-        /*
-         * Output
-         */
+        $data = $query->get();
 
         return array(
             "draw"            => intval($request['draw']),
@@ -340,6 +392,7 @@ class DatatablesService implements DatatablesServiceInterface
      *
      * @param  array  $a    Array to get data from
      * @param  string $prop Property to read
+     *
      * @return array        Array of property values
      */
     static function pluck($a, $prop)
@@ -359,6 +412,7 @@ class DatatablesService implements DatatablesServiceInterface
      *
      * @param  array|string $a    Array to join
      * @param  string       $join Glue for the concatenation
+     *
      * @return string Joined string
      */
     static function _flatten($a, $join = ' AND ')
@@ -371,4 +425,5 @@ class DatatablesService implements DatatablesServiceInterface
 
         return $a;
     }
+
 }

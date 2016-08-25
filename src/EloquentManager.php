@@ -92,6 +92,7 @@ class EloquentManager implements DataTablesInterface
                 $this->orderRecords();
             }
             $this->filterRecords();
+            $this->response->recordsFiltered = $this->isFilterApplied ? $this->count() : $this->response->recordsTotal;
             if ( $orderFirst ) {
                 $this->rawQuery = $this->query;
                 $this->orderRecords();
@@ -221,7 +222,6 @@ class EloquentManager implements DataTablesInterface
         }
 
         $this->columnSearch();
-        $this->response->recordsFiltered = $this->isFilterApplied ? $this->count() : $this->response->recordsTotal;
     }
 
     /**

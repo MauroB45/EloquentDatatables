@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Mauricio.Ruiz
- * Date: 9/02/2016
- * Time: 2:16 PM
- */
+
 namespace MauricioBernal\DatatablesLaravel;
 
 interface DatatablesServiceInterface
