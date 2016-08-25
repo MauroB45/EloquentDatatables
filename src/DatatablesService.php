@@ -4,7 +4,7 @@ namespace MauroB45\EloquentDatatables;
 
 use DB;
 use Illuminate\Database\Query\Builder;
-use MauroB45\EloquentDatatables\Contracts\DatatablesServiceInterface;
+use MauroB45\EloquentDatatables\DatatablesServiceInterface;
 use MauroB45\EloquentDatatables\Models\Request;
 
 /**

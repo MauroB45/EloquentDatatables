@@ -1,6 +1,6 @@
 <?php
 
-namespace MauroB45\DatatablesLaravel;
+namespace MauroB45\EloquentDatatables;
 
 interface DatatablesServiceInterface
 {
