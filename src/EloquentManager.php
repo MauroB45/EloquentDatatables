@@ -5,9 +5,9 @@ namespace MauroB45\EloquentDatatables;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Str;
-use MauroB\EloquentDatatables\Contracts\DataTablesInterface;
-use MauroB\EloquentDatatables\Models\DataTable;
-use MauroB\EloquentDatatables\Models\Request;
+use MauroB45\EloquentDatatables\Contracts\DataTablesInterface;
+use MauroB45\EloquentDatatables\Models\DataTable;
+use MauroB45\EloquentDatatables\Models\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 /**

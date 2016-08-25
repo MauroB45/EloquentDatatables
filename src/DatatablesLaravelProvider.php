@@ -1,6 +1,6 @@
 <?php
 
-namespace MauroB45\DatatablesLaravel;
+namespace MauroB45\EloquentDatatables;
 
 use Illuminate\Support\ServiceProvider;
 
@@ -30,7 +30,7 @@ class DatatablesLaravelProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton('MauricioBernal\DatatablesLaravel\Contract', function ($app) {
+        $this->app->singleton('MauroB45\EloquentDatatables\Contract', function ($app) {
             return new DatatablesService();
         });
     }

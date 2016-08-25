@@ -4,8 +4,8 @@ namespace MauroB45\EloquentDatatables;
 
 use DB;
 use Illuminate\Database\Query\Builder;
-use MauroB\EloquentDatatables\Contracts\DatatablesServiceInterface;
-use MauroB\EloquentDatatables\Models\Request;
+use MauroB45\EloquentDatatables\Contracts\DatatablesServiceInterface;
+use MauroB45\EloquentDatatables\Models\Request;
 
 /**
  * Class DatatablesService
