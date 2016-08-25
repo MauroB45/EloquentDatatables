@@ -3,7 +3,6 @@
 namespace MauroB45\EloquentDatatables;
 
 use Illuminate\Support\ServiceProvider;
-use MauroB45\EloquentDatatables\Contracts\DatatablesServiceInterface;
 use MauroB45\EloquentDatatables\Models\Request;
 
 class EloquentDatatablesServiceProvider extends ServiceProvider
