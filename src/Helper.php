@@ -1,6 +1,6 @@
 <?php
 
-namespace MauroB45B\EloquentDatatables;
+namespace MauroB45\EloquentDatatables;
 
 use DateTime;
 use Illuminate\Contracts\Support\Arrayable;
