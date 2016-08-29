@@ -89,12 +89,17 @@ class EloquentManager implements DataTablesInterface
         if ( $this->response->recordsTotal ) {
             if ( !$orderFirst ) {
                 $this->rawQuery = $this->query;
+
                 $this->orderRecords();
             }
             $this->filterRecords();
             $this->response->recordsFiltered = $this->isFilterApplied ? $this->count() : $this->response->recordsTotal;
             if ( $orderFirst ) {
                 $this->rawQuery = $this->query;
+
+                $this->query = \DB::table(\DB::raw("({$this->query->toSql()}) as sub"))
+                    ->mergeBindings($this->query);
+
                 $this->orderRecords();
             }
             $this->paging();
@@ -136,9 +141,6 @@ class EloquentManager implements DataTablesInterface
      */
     public function orderRecords()
     {
-        $this->query = \DB::table(\DB::raw("({$this->query->toSql()}) as sub"))
-            ->mergeBindings($this->query);
-
         if ( $this->orderCallback ) {
             call_user_func($this->orderCallback, $this->query);
 
@@ -147,7 +149,7 @@ class EloquentManager implements DataTablesInterface
 
         foreach ( $this->request->orderableColumns() as $orderable ) {
             $column = $this->getColumnName($orderable['column'], true);
-            $column = $this->columns[ array_search($column, array_column($this->columns, 'name')) ]['db'];
+            $column = $this->columns[ array_search($column, array_column($this->columns, 'name')) ]['name'];
             if ( isset( $this->columnDef['order'][ $column ] ) ) {
                 $method = $this->columnDef['order'][ $column ]['method'];
                 $parameters = $this->columnDef['order'][ $column ]['parameters'];
