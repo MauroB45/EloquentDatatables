@@ -29,6 +29,10 @@ class EloquentManager implements DataTablesInterface
     protected $prefix;
     protected $orderCallback;
     protected $isFilterApplied = false;
+    /***
+     * @var \Illuminate\Support\Collection
+     */
+    protected $exactSearchColumns = [];
     /**
      * @var bool
      */
@@ -39,9 +43,9 @@ class EloquentManager implements DataTablesInterface
      * EloquentManager constructor.
      *
      * @param Builder|\Eloquent $model
-     * @param Request           $request
+     * @param Request $request
      */
-    public function __construct( $model, Request $request )
+    public function __construct($model, Request $request)
     {
         $this->response = new DataTable();
         $this->query = $model instanceof Builder ? $model : $model->getQuery();
@@ -57,7 +61,7 @@ class EloquentManager implements DataTablesInterface
      * @param mixed $orderCallback
      * @return EloquentManager
      */
-    public function order( $orderCallback )
+    public function order($orderCallback)
     {
         $this->orderCallback = $orderCallback;
 
@@ -80,26 +84,21 @@ class EloquentManager implements DataTablesInterface
      * @param bool $orderFirst
      * @return JsonResponse
      */
-    public function get( $orderFirst = true )
+    public function get($orderFirst = true)
     {
         $this->query->addSelect($this->getColumnSelect());
 
         $this->response->recordsTotal = $this->count();
 
-        if ( $this->response->recordsTotal ) {
-            if ( !$orderFirst ) {
+        if ($this->response->recordsTotal) {
+            if (!$orderFirst) {
                 $this->rawQuery = $this->query;
-
                 $this->orderRecords();
             }
             $this->filterRecords();
             $this->response->recordsFiltered = $this->isFilterApplied ? $this->count() : $this->response->recordsTotal;
-            if ( $orderFirst ) {
+            if ($orderFirst) {
                 $this->rawQuery = $this->query;
-
-                $this->query = \DB::table(\DB::raw("({$this->query->toSql()}) as sub"))
-                    ->mergeBindings($this->query);
-
                 $this->orderRecords();
             }
             $this->paging();
@@ -113,8 +112,8 @@ class EloquentManager implements DataTablesInterface
      */
     private function getColumnSelect()
     {
-        return array_map(function( $column ) {
-            return ( $column['db'] . ' AS ' . $column['name'] );
+        return array_map(function ($column) {
+            return ($column['db'] . ' AS ' . $column['name']);
         }, $this->columns);
     }
 
@@ -125,15 +124,15 @@ class EloquentManager implements DataTablesInterface
      */
     public function count()
     {
-        $query = clone ( $this->rawQuery == null ? $this->query : $this->rawQuery );
+        $query = clone ($this->rawQuery == null ? $this->query : $this->rawQuery);
 
-        if ( !Str::contains(Str::lower($query->toSql()), [ 'union', 'having', 'distinct', 'order by', 'group by' ]) ) {
+        if (!Str::contains(Str::lower($query->toSql()), ['union', 'having', 'distinct', 'order by', 'group by'])) {
             $row_count = $this->connection->getQueryGrammar()->wrap('row_count');
             $query->select($this->connection->raw("'1' as {$row_count}"));
         }
 
         return $this->connection->table($this->connection->raw('(' . $query->toSql() . ') count_row_table'))
-                                ->setBindings($query->getBindings())->count();
+            ->setBindings($query->getBindings())->count();
     }
 
     /**
@@ -141,18 +140,21 @@ class EloquentManager implements DataTablesInterface
      */
     public function orderRecords()
     {
-        if ( $this->orderCallback ) {
+        $this->query = \DB::table(\DB::raw("({$this->query->toSql()}) as sub"))
+            ->mergeBindings($this->query);
+
+        if ($this->orderCallback) {
             call_user_func($this->orderCallback, $this->query);
 
             return;
         }
 
-        foreach ( $this->request->orderableColumns() as $orderable ) {
+        foreach ($this->request->orderableColumns() as $orderable) {
             $column = $this->getColumnName($orderable['column'], true);
-            $column = $this->columns[ array_search($column, array_column($this->columns, 'name')) ]['name'];
-            if ( isset( $this->columnDef['order'][ $column ] ) ) {
-                $method = $this->columnDef['order'][ $column ]['method'];
-                $parameters = $this->columnDef['order'][ $column ]['parameters'];
+            $column = $this->columns[array_search($column, array_column($this->columns, 'name'))]['name'];
+            if (isset($this->columnDef['order'][$column])) {
+                $method = $this->columnDef['order'][$column]['method'];
+                $parameters = $this->columnDef['order'][$column]['parameters'];
                 $this->compileColumnQuery(
                     $this->query, $method, $parameters, $column, $orderable['direction']
                 );
@@ -166,19 +168,19 @@ class EloquentManager implements DataTablesInterface
      * Get column name to be use for filtering and sorting.
      *
      * @param integer $index
-     * @param bool    $wantsAlias
+     * @param bool $wantsAlias
      * @return string
      */
-    protected function getColumnName( $index, $wantsAlias = false )
+    protected function getColumnName($index, $wantsAlias = false)
     {
         $column = $this->request->columnName($index);
 
         // DataTables is using make(false)
-        if ( is_numeric($column) ) {
+        if (is_numeric($column)) {
             $column = $this->getColumnNameByIndex($index);
         }
 
-        if ( Str::contains(Str::upper($column), ' AS ') ) {
+        if (Str::contains(Str::upper($column), ' AS ')) {
             $column = $this->extractColumnName($column, $wantsAlias);
         }
 
@@ -189,20 +191,20 @@ class EloquentManager implements DataTablesInterface
      * Get column name from string.
      *
      * @param string $str
-     * @param bool   $wantsAlias
+     * @param bool $wantsAlias
      * @return string
      */
-    protected function extractColumnName( $str, $wantsAlias )
+    protected function extractColumnName($str, $wantsAlias)
     {
         $matches = explode(' as ', Str::lower($str));
 
-        if ( !empty( $matches ) ) {
-            if ( $wantsAlias ) {
+        if (!empty($matches)) {
+            if ($wantsAlias) {
                 return array_pop($matches);
             } else {
                 return array_shift($matches);
             }
-        } elseif ( strpos($str, '.') ) {
+        } elseif (strpos($str, '.')) {
             $array = explode('.', $str);
 
             return array_pop($array);
@@ -218,10 +220,10 @@ class EloquentManager implements DataTablesInterface
      */
     protected function filterRecords()
     {
-        if ( $this->request->isSearchable() ) {
+        if ($this->request->isSearchable()) {
             $this->filtering();
         } else {
-            if ( is_callable($this->filterCallback) ) {
+            if (is_callable($this->filterCallback)) {
                 call_user_func($this->filterCallback, $this->filterCallbackParameters);
             }
         }
@@ -239,14 +241,14 @@ class EloquentManager implements DataTablesInterface
         $eagerLoads = $this->getEagerLoads();
 
         $this->query->where(
-            function( $query ) use ( $eagerLoads ) {
+            function ($query) use ($eagerLoads) {
                 $keyword = $this->setupKeyword($this->request->keyword());
-                foreach ( $this->request->searchableColumnIndex() as $index ) {
+                foreach ($this->request->searchableColumnIndex() as $index) {
                     $columnName = $this->getColumnName($index);
 
-                    if ( isset( $this->columnDef['filter'][ $columnName ] ) ) {
-                        $method = Helper::getOrMethod($this->columnDef['filter'][ $columnName ]['method']);
-                        $parameters = $this->columnDef['filter'][ $columnName ]['parameters'];
+                    if (isset($this->columnDef['filter'][$columnName])) {
+                        $method = Helper::getOrMethod($this->columnDef['filter'][$columnName]['method']);
+                        $parameters = $this->columnDef['filter'][$columnName]['parameters'];
                         $this->compileColumnQuery(
                             $this->query($query),
                             $method,
@@ -255,11 +257,11 @@ class EloquentManager implements DataTablesInterface
                             $keyword
                         );
                     } else {
-                        if ( count(explode('.', $columnName)) > 1 ) {
+                        if (count(explode('.', $columnName)) > 1) {
                             $parts = explode('.', $columnName);
                             $relationColumn = array_pop($parts);
                             $relation = implode('.', $parts);
-                            if ( in_array($relation, $eagerLoads) ) {
+                            if (in_array($relation, $eagerLoads)) {
                                 $this->compileRelationSearch(
                                     $this->query($query),
                                     $relation,
@@ -286,7 +288,7 @@ class EloquentManager implements DataTablesInterface
      * @param  string $value
      * @return string
      */
-    public function setupKeyword( $value )
+    public function setupKeyword($value)
     {
         $keyword = '%' . $value . '%';
         $keyword = str_replace('\\', '%', $keyword);
@@ -301,30 +303,54 @@ class EloquentManager implements DataTablesInterface
      */
     public function columnSearch()
     {
-        $columns = $this->request->get('columns');
-        for ( $i = 0, $c = count($columns); $i < $c; $i++ ) {
-            if ( $this->request->isColumnSearchable($i) ) {
-                $column = $this->getColumnName($i);
-                $column = $this->columns[ array_search($column, array_column($this->columns, 'name')) ]['db'];
-                $keyword = $this->getSearchKeyword($i);
+        $columns = collect($this->request->get('columns'));
 
-                if ( isset( $this->columnDef['filter'][ $column ] ) ) {
-                    $method = $this->columnDef['filter'][ $column ]['method'];
-                    $parameters = $this->columnDef['filter'][ $column ]['parameters'];
-                    $this->compileColumnQuery($this->query, $method, $parameters, $column, $keyword);
-                } else {
-                    $column = $this->castColumn($column);
-//                    if ($this->isCaseInsensitive()) {
-//                        $this->compileColumnSearch($i, $column, $keyword, false);
-//                    } else {
-                    $col = strstr($column, '(') ? $this->connection->raw($column) : $column;
-                    $this->compileColumnSearch($i, $col, $keyword, true);
-//                    }
-                }
+        $res = $columns->filter(function ($value, $key) {
+            return $this->request->isColumnSearchable($key);
+        })->each(function ($item, $key) {
+            $alias = $this->getColumnName($key);
+            $column = $this->getDatabaseColumnName($alias);
 
-                $this->isFilterApplied = true;
-            }
-        }
+            $this->compileColumnSearch(
+                $key,
+                strstr($this->castColumn($column), '(') ? $this->connection->raw($column) : $column,
+                collect($this->exactSearchColumns)->contains($alias),
+                true);
+
+            $this->isFilterApplied = true;
+        });
+
+//        dd($res);
+//        $columns = $this->request->get('columns');
+//
+//        for ($i = 0, $c = count($columns); $i < $c; $i++) {
+//            if ($this->request->isColumnSearchable($i)) {
+//                $column = $this->getColumnName($i);
+//                $column = $this->columns[array_search($column, array_column($this->columns, 'name'))]['db'];
+//                $keyword = $this->getSearchKeyword($i);
+//
+//                if (isset($this->columnDef['filter'][$column])) {
+//                    $method = $this->columnDef['filter'][$column]['method'];
+//                    $parameters = $this->columnDef['filter'][$column]['parameters'];
+//                    $this->compileColumnQuery($this->query, $method, $parameters, $column, $keyword);
+//                } else {
+//                    $column = $this->castColumn($column);
+////                    if ($this->isCaseInsensitive()) {
+////                        $this->compileColumnSearch($i, $column, $keyword, false);
+////                    } else {
+//                    $col = strstr($column, '(') ? $this->connection->raw($column) : $column;
+//                    $this->compileColumnSearch($i, $col, $keyword, $exactSearch, true);
+////                    }
+//                }
+//
+//                $this->isFilterApplied = true;
+//            }
+//        }
+    }
+
+    private function getDatabaseColumnName($columnAlias)
+    {
+        return $this->columns[array_search($columnAlias, array_column($this->columns, 'name'))]['db'];
     }
 
     /**
@@ -333,13 +359,13 @@ class EloquentManager implements DataTablesInterface
      * @param int $i
      * @return string
      */
-    private function getSearchKeyword( $i )
+    private function getSearchKeyword($i)
     {
 //        if ($this->request->isRegex($i)) {
 //            return $this->request->columnKeyword($i);
 //        }
 
-        return $this->setupKeyword($this->request->columnKeyword($i));
+        return $this->request->columnKeyword($i);
     }
 
     /**
@@ -348,10 +374,10 @@ class EloquentManager implements DataTablesInterface
      * @param  string $column
      * @return string
      */
-    public function castColumn( $column )
+    public function castColumn($column)
     {
         $column = $this->connection->getQueryGrammar()->wrap($column);
-        if ( $this->database === 'pgsql' ) {
+        if ($this->database === 'pgsql') {
             $column = 'CAST(' . $column . ' as TEXT)';
         }
 
@@ -361,20 +387,30 @@ class EloquentManager implements DataTablesInterface
     /**
      * Compile queries for column search.
      *
-     * @param int    $i
-     * @param mixed  $column
+     * @param int $i
+     * @param mixed $column
      * @param string $keyword
-     * @param bool   $caseSensitive
+     * @param bool $caseSensitive
      */
-    protected function compileColumnSearch( $i, $column, $keyword, $caseSensitive = true )
+    protected function compileColumnSearch($i, $column, $exactSearch, $caseSensitive = true)
     {
-//        if ($this->request->isRegex($i)) {
-//            $this->regexColumnSearch($column, $keyword, $caseSensitive);
-//        } else {
-        $sql = $caseSensitive ? $column . ' LIKE ?' : 'LOWER(' . $column . ') LIKE ?';
+        $keyword = $this->getSearchKeyword($i);
         $keyword = $caseSensitive ? $keyword : Str::lower($keyword);
-        $this->query->whereRaw($sql, [ $keyword ]);
-//        }
+
+        if ($exactSearch) {
+            $sql = $caseSensitive ? $column . ' = ?' : 'LOWER(' . $column . ') = ?';
+            $this->query->whereRaw($sql, [$keyword]);
+        } else {
+            $search = $this->setupKeyword($keyword);
+            $sql = $caseSensitive ? $column . ' LIKE ?' : 'LOWER(' . $column . ') LIKE ?';
+            $this->query->whereRaw($sql, [$search]);
+        }
+    }
+
+    public function exactColumnSearch($array){
+        $this->exactSearchColumns = $array;
+
+        return $this;
     }
 
     /**
@@ -385,7 +421,7 @@ class EloquentManager implements DataTablesInterface
     public function paging()
     {
         $this->query->skip($this->request['start'])
-                    ->take((int) $this->request['length'] > 0 ? $this->request['length'] : 10);
+            ->take((int)$this->request['length'] > 0 ? $this->request['length'] : 10);
     }
 
     /***
@@ -394,22 +430,22 @@ class EloquentManager implements DataTablesInterface
     public function resolve()
     {
         $data = $this->query->get();
-        $out = [ ];
-        for ( $i = 0, $ien = count($data); $i < $ien; $i++ ) {
-            $row = [ ];
-            for ( $j = 0, $jen = count($this->columns); $j < $jen; $j++ ) {
-                $column = $this->columns[ $j ];
+        $out = [];
+        for ($i = 0, $ien = count($data); $i < $ien; $i++) {
+            $row = [];
+            for ($j = 0, $jen = count($this->columns); $j < $jen; $j++) {
+                $column = $this->columns[$j];
 
                 // Is there a formatter?
-                if ( isset( $column['formatter'] ) ) {
-                    $row[ ($column['name']) ] = $column['formatter']($data[ $i ]->{$column['name']}, $data[ $i ]);
+                if (isset($column['formatter'])) {
+                    $row[($column['name'])] = $column['formatter']($data[$i]->{$column['name']}, $data[$i]);
                 } else {
-                    $row[ ($column['name']) ] = $data[ $i ]->{$column['name']};
+                    $row[($column['name'])] = $data[$i]->{$column['name']};
                 }
 
                 // Is there a cast?
-                if ( isset( $column['cast'] ) ) {
-                    settype($row[ $column['name'] ], $column['cast']);
+                if (isset($column['cast'])) {
+                    settype($row[$column['name']], $column['cast']);
                 }
             }
 
@@ -426,7 +462,7 @@ class EloquentManager implements DataTablesInterface
      * @param $columns
      * @return EloquentManager $this
      */
-    public function columns( $columns )
+    public function columns($columns)
     {
         $this->columns = $this->standarizeColumns($columns);
 
@@ -437,14 +473,14 @@ class EloquentManager implements DataTablesInterface
      * @param $columns
      * @return array
      */
-    private function standarizeColumns( $columns )
+    private function standarizeColumns($columns)
     {
-        return array_map(function( $column ) {
+        return array_map(function ($column) {
             return [
-                'db'        => $column['db'],
-                'name'      => isset( $column['name'] ) ? $column['name'] : $column['db'],
-                'formatter' => isset( $column['formatter'] ) ? $column['formatter'] : null,
-                'cast'      => isset( $column['cast'] ) ? $column['cast'] : null,
+                'db' => $column['db'],
+                'name' => isset($column['name']) ? $column['name'] : $column['db'],
+                'formatter' => isset($column['formatter']) ? $column['formatter'] : null,
+                'cast' => isset($column['cast']) ? $column['cast'] : null,
             ];
         }, $columns);
     }
@@ -453,7 +489,7 @@ class EloquentManager implements DataTablesInterface
      * @param $fun
      * @return EloquentManager $this
      */
-    public function filter( $fun )
+    public function filter($fun)
     {
         $this->query = $fun($this->query);
 
@@ -464,9 +500,9 @@ class EloquentManager implements DataTablesInterface
      * @param $search
      * @return Collection
      */
-    public function distinct( $search )
+    public function distinct($search)
     {
-         $this->query->select($search);
+        $this->query->select($search);
 
         $this->filterRecords();
 
