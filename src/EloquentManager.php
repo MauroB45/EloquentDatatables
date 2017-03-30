@@ -125,7 +125,9 @@ class EloquentManager implements DataTablesInterface
      */
     public function get($orderFirst = true)
     {
-        $this->query->addSelect($this->getColumnSelect());
+        $this->getColumnSelect()->each(function ($select) {
+            return $this->query->selectRaw($select);
+        });
 
         $this->response->recordsTotal = $this->count();
 
@@ -147,14 +149,14 @@ class EloquentManager implements DataTablesInterface
     }
 
     /***
-     * @return array
+     * @return Collection
      */
     private function getColumnSelect()
     {
         return $this->columns->map(function ($column) {
             /* @var $column DatatableColumn */
             return $column->db . ' AS ' . $column->name;
-        })->toArray();
+        });
     }
 
     /**
@@ -274,18 +276,6 @@ class EloquentManager implements DataTablesInterface
     }
 
     /**
-     * Get eager loads keys if eloquent.
-     *
-     * @return array
-     */
-    protected function getEagerLoads()
-    {
-
-        return [];
-
-    }
-
-    /**
      * Perform global search.
      *
      * @return void
@@ -336,21 +326,6 @@ class EloquentManager implements DataTablesInterface
 //                }
 //            }
 //        );
-    }
-
-    /**
-     * Setup search keyword.
-     *
-     * @param  string $value
-     *
-     * @return string
-     */
-    public function setupKeyword($value)
-    {
-        $keyword = '%' . $value . '%';
-        $keyword = str_replace('\\', '%', $keyword);
-
-        return $keyword;
     }
 
     /**
@@ -426,6 +401,21 @@ class EloquentManager implements DataTablesInterface
 //        }
 
         return $this->request->columnKeyword($i);
+    }
+
+    /**
+     * Setup search keyword.
+     *
+     * @param  string $value
+     *
+     * @return string
+     */
+    public function setupKeyword($value)
+    {
+        $keyword = '%' . $value . '%';
+        $keyword = str_replace('\\', '%', $keyword);
+
+        return $keyword;
     }
 
     /**
@@ -571,6 +561,18 @@ class EloquentManager implements DataTablesInterface
         $this->filterRecords();
 
         return $this->query->distinct()->get();
+    }
+
+    /**
+     * Get eager loads keys if eloquent.
+     *
+     * @return array
+     */
+    protected function getEagerLoads()
+    {
+
+        return [];
+
     }
 
 }
