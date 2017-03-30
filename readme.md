@@ -9,14 +9,14 @@ This package provide a nice interface to capture and use the request object sent
 This package can be installed with Composer running the following command:
 
 ```php
-  php require MauroB45\EloquentDatatables
+  composer require MauroB45\EloquentDatatables
 ```
 After installing the EloquentDatatables, register the `MauricioBernal\EloquentDatatables\EloquentDatatablesServiceProvider` in your config/app.php configuration file like:
 
 ```php
   'providers' => [
     // ...
-    MauricioBernal\EloquentDatatables\EloquentDatatablesServiceProvider::class
+    MauroB45\EloquentDatatables\EloquentDatatablesServiceProvider::class
   ],
 ```
 
@@ -25,9 +25,10 @@ After installing the EloquentDatatables, register the `MauricioBernal\EloquentDa
 The basic usage of the package is
 
 ```php
+
 public function getDataTable()
 {
-	return \Datatables::of("posts")->columns([[ "db" => "message" ], [ "db" => "userId", "name" => "user" ]])->get();;
+	return \Datatables::of("posts")->columns(['name', 'lastname', 'email'])->get();
 }
 
 ```
